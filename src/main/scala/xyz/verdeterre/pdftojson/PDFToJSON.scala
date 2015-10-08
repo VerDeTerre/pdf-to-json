@@ -1,8 +1,10 @@
 package xyz.verdeterre.pdftojson
 
 import java.io.File
+import java.lang.Float
 
 import collection.mutable.ListBuffer
+import collection.JavaConversions.mapAsJavaMap
 
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.util.{PDFTextStripper,TextPosition}
@@ -29,10 +31,13 @@ class PDFToJSON(file: File) {
     def overlaps(other: Element): Boolean = top == other.top && (math.abs(right - other.left) < 0.8)
 
     def asJSON: JSONObject = {
-      val map = new java.util.HashMap[String, Object]()
-      map.put("value", value)
-      map.put("left", new java.lang.Float(left))
-      map.put("right", new java.lang.Float(right))
+      val map: java.util.Map[String, Object] = Map(
+        "value" -> value,
+        "top" -> new Float(top),
+        "bottom" -> new Float(bottom),
+        "left" -> new Float(left),
+        "right" -> new Float(right)
+      )
       new JSONObject(map)
     }
   }
@@ -49,13 +54,16 @@ class PDFToJSON(file: File) {
       this
     }
 
-    private def distinctSortedElements = elements.distinct.sortBy(element => element.left)
+    private def distinctSortedElements = elements.groupBy(element => {
+        (element.value, element.left, element.right)
+    }).values.map(group => group.head).toList.sortBy(element => (element.top, element.left))
 
     def asJSON: JSONObject = {
-      val map = new java.util.HashMap[String, Object]()
-      map.put("elements", new JSONArray(distinctSortedElements.map(element => element.asJSON).toArray))
-      map.put("top", new java.lang.Float(top))
-      map.put("bottom", new java.lang.Float(bottom))
+      val map: java.util.Map[String, Object] = Map(
+        "elements" -> new JSONArray(distinctSortedElements.map(element => element.asJSON).toArray),
+        "top" -> new Float(top),
+        "bottom" -> new Float(bottom)
+      )
       new JSONObject(map)
     }
   }
